@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block content %}
+<article class="news-article" style="padding-top: 15vh;">
+    <article>
+        <h1>{{ article.headline }}</h1>
+    </article>
+    <img src="{{ article.get_image_url }}" alt="{{ article.headline }}">
+
+
+    
+
+    <div class="players-flex">
+        {% if article.video_url %}
+        <div class="media-wrapper">
+            <div class="video-container">
+                <iframe width="560" height="315" src="{{ article.video_url }}" title="YouTube video player" frameborder="0" allowfullscreen></iframe>
+            </div>
+        </div>
+        {% elif article.video_filename %}
+        <iframe src="{{ article.get_video_url }}" allowfullscreen></iframe>
+        {% endif %}
+    </div>
+
+    <article>
+    <p>{{ article.content }}</p>
+    </article>
+
+    <button id="like-btn" data-article-id="{{ article.article_id }}">❤️ Like (<span id="like-count">{{ article.likes }}</span>)</button>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const likeBtn = document.getElementById("like-btn");
+        
+            likeBtn.addEventListener("click", function () {
+                const articleId = likeBtn.getAttribute("data-article-id");
+        
+                fetch(`/like/${articleId}/`, { method: "POST" })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById("like-count").textContent = data.likes;
+                    })
+                    .catch(error => console.error("Error:", error));
+            });
+        });
+    </script>
+    
+    <h2>Comments</h2>
+
+    <div id="comment-list">
+        {% for comment in article.comments.all %}
+            <p><strong>{{ comment.name }}</strong> ({{ comment.created_at|date:"Y-m-d H:i" }}): {{ comment.text }}</p>
+        {% empty %}
+            <p>No comments yet. Be the first to comment!</p>
+        {% endfor %}
+    </div>
+    
+    <form id="comment-form">
+        <input type="text" id="comment-name" placeholder="Your Name" required>
+        <textarea id="comment-text" placeholder="Write a comment..." required></textarea>
+        <button type="submit">Post Comment</button>
+    </form>
+    
+    <script>
+    document.getElementById("comment-form").addEventListener("submit", function(event) {
+        event.preventDefault();
+        let commentName = document.getElementById("comment-name").value;
+        let commentText = document.getElementById("comment-text").value;
+    
+        fetch("{% url 'add_comment' article.article_id %}", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ "name": commentName, "text": commentText })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                let commentList = document.getElementById("comment-list");
+                let newComment = document.createElement("p");
+                newComment.innerHTML = `<strong>${data.name}</strong> (${data.created_at}): ${data.text}`;
+                commentList.appendChild(newComment);
+                document.getElementById("comment-name").value = "";
+                document.getElementById("comment-text").value = "";
+            }
+        });
+    });
+    </script>
+
+
+    <section class="recommended">
+        <h2>Related Articles</h2>
+        <div class="related-grid">
+            {% for article in articles %}
+        <article>
+            <img src="{{ article.image_url }}" alt="{{ article.headline }}">
+
+            {% if article.article_id %}
+                <h2><a href="{% url 'article_detail' article.article_id %}"> {{ article.headline }}</a></h2>
+            {% else %}
+                <h2>{{ article.headline }}</h2>
+            {% endif %}
+        
+            <p>{{ article.description }}</p>
+        </article>
+        {% endfor %}
+        </div>
+    </section>
+</article>
+{% endblock %}
